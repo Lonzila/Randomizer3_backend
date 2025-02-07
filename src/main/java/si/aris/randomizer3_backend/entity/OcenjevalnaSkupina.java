@@ -7,16 +7,22 @@ import java.util.List;
 @Entity
 @Table(name = "ocenjevalne_skupine")
 public class OcenjevalnaSkupina {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String imeSkupine;
+    private String naziv; // Ime skupine, npr. "OS1", "OS2"
 
-    @OneToMany(cascade = CascadeType.ALL)
-    @JoinColumn(name = "skupina_id")
+    @ManyToMany
+    @JoinTable(
+            name = "ocenjevalna_skupina_recenzenti",
+            joinColumns = @JoinColumn(name = "ocenjevalna_skupina_id"),
+            inverseJoinColumns = @JoinColumn(name = "recenzent_id")
+    )
     private List<Recenzent> recenzenti = new ArrayList<>();
+
+    @OneToMany(mappedBy = "ocenjevalnaSkupina", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OcenjevalnaSkupinaPoddomena> poddomene = new ArrayList<>();
 
     // Getters and setters
     public Long getId() {
@@ -27,19 +33,31 @@ public class OcenjevalnaSkupina {
         this.id = id;
     }
 
-    public String getImeSkupine() {
-        return imeSkupine;
+    public String getNaziv() {
+        return naziv;
     }
 
-    public void setImeSkupine(String imeSkupine) {
-        this.imeSkupine = imeSkupine;
+    public void setNaziv(String naziv) {
+        this.naziv = naziv;
     }
 
     public List<Recenzent> getRecenzenti() {
         return recenzenti;
     }
 
-    public void setRecenzenti(List<Recenzent> recenzenti) {
-        this.recenzenti = recenzenti;
+    public List<OcenjevalnaSkupinaPoddomena> getPoddomene() {
+        return poddomene;
     }
+
+    public void addPoddomena(OcenjevalnaSkupinaPoddomena poddomena) {
+        poddomene.add(poddomena);
+        poddomena.setOcenjevalnaSkupina(this); // Povežemo z ocenjevalno skupino
+    }
+
+    public void addRecenzent(Recenzent recenzent) {
+        if (!recenzenti.contains(recenzent)) {
+            recenzenti.add(recenzent);
+        }
+    }
+
 }
