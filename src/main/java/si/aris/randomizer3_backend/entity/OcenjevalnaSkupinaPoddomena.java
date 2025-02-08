@@ -2,6 +2,9 @@ package si.aris.randomizer3_backend.entity;
 
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Table(name = "ocenjevalna_skupina_poddomena")
 public class OcenjevalnaSkupinaPoddomena {
@@ -23,7 +26,13 @@ public class OcenjevalnaSkupinaPoddomena {
 
     private int steviloRecenzentov; // Število recenzentov za zahtevo
     private boolean jeSpecifikacija; // Ali gre za specifično poddomeno (true) ali splošno domeno (false)
-
+    @ManyToMany
+    @JoinTable(
+            name = "predlogi_recenzentov",
+            joinColumns = @JoinColumn(name = "poddomena_id"),
+            inverseJoinColumns = @JoinColumn(name = "recenzent_id")
+    )
+    private List<Recenzent> predlogiRecenzentov = new ArrayList<>();
     public OcenjevalnaSkupinaPoddomena(OcenjevalnaSkupina ocenjevalnaSkupina, ErcPoddomena ercPoddomena,
                                        ErcDomena ercDomena, int steviloRecenzentov, boolean jeSpecifikacija) {
         this.ocenjevalnaSkupina = ocenjevalnaSkupina;
@@ -38,6 +47,13 @@ public class OcenjevalnaSkupinaPoddomena {
     }
 
     // Getters and setters
+    public List<Recenzent> getPredlogiRecenzentov() {
+        return predlogiRecenzentov;
+    }
+
+    public void setPredlogiRecenzentov(List<Recenzent> predlogiRecenzentov) {
+        this.predlogiRecenzentov = predlogiRecenzentov;
+    }
     public Long getId() {
         return id;
     }

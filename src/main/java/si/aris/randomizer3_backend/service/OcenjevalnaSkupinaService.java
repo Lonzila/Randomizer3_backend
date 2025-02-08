@@ -7,9 +7,14 @@ import si.aris.randomizer3_backend.entity.Recenzent;
 import si.aris.randomizer3_backend.repository.ErcDomenaRepository;
 import si.aris.randomizer3_backend.repository.ErcPoddomenaRepository;
 import si.aris.randomizer3_backend.repository.OcenjevalnaSkupinaRepository;
+import si.aris.randomizer3_backend.repository.RecenzentRepository;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
-import java.util.HashSet;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.util.List;
+import java.util.HashSet;
 import java.util.Set;
 
 @Service
@@ -19,46 +24,55 @@ public class OcenjevalnaSkupinaService {
     private final OcenjevalnaSkupinaRepository ocenjevalnaSkupinaRepository;
     private final ErcDomenaRepository ercDomenaRepository;
     private final ErcPoddomenaRepository ercPoddomenaRepository;
-
+    private final RecenzentRepository recenzentRepository;
     public OcenjevalnaSkupinaService(RecenzentService recenzentService,
                                      OcenjevalnaSkupinaRepository ocenjevalnaSkupinaRepository,
                                      ErcDomenaRepository ercDomenaRepository,
-                                     ErcPoddomenaRepository ercPoddomenaRepository) {
+                                     ErcPoddomenaRepository ercPoddomenaRepository, RecenzentRepository recenzentRepository) {
         this.recenzentService = recenzentService;
         this.ocenjevalnaSkupinaRepository = ocenjevalnaSkupinaRepository;
         this.ercDomenaRepository = ercDomenaRepository;
         this.ercPoddomenaRepository = ercPoddomenaRepository;
+        this.recenzentRepository = recenzentRepository;
     }
 
-    // Obstoječa metoda
-    public void dodeliRecenzenteSkupinam(List<OcenjevalnaSkupinaPoddomena> zahteveSkupin) {
-        Set<Long> zeIzbraniRecenzenti = new HashSet<>(); // Beleži že izbrane recenzente
+    public void nakljucnoDodeliRecenzente() {
+        List<OcenjevalnaSkupina> vseSkupine = ocenjevalnaSkupinaRepository.findAll();
+        Set<Long> zeIzbraniRecenzenti = new HashSet<>();
 
-        for (OcenjevalnaSkupinaPoddomena zahteva : zahteveSkupin) {
-            // Naključno izberi recenzente za to zahtevo
-            List<Recenzent> predlogi = recenzentService.nakljucniIzborRecenzentov(
-                    zahteva.isJeSpecifikacija() ? zahteva.getErcPoddomena().getNaziv() : zahteva.getErcDomena().getNaziv(),
-                    zahteva.isJeSpecifikacija(),
-                    zahteva.getSteviloRecenzentov(),
-                    zeIzbraniRecenzenti
-            );
+        for (OcenjevalnaSkupina skupina : vseSkupine) {
+            for (OcenjevalnaSkupinaPoddomena zahteva : skupina.getPoddomene()) {
+                // Pridobi predloge za vsako mesto
+                List<List<Recenzent>> predlogiZaVsakoMesto = recenzentService.pridobiPredlogeRecenzentov(
+                        zahteva.isJeSpecifikacija() ? zahteva.getErcPoddomena().getNaziv() : zahteva.getErcDomena().getNaziv(),
+                        zahteva.isJeSpecifikacija(),
+                        zahteva.getSteviloRecenzentov(),
+                        zeIzbraniRecenzenti
+                );
 
-            // Dodaj recenzente v ocenjevalno skupino in posodobi seznam že izbranih
-            for (Recenzent predlog : predlogi) {
-                zahteva.getOcenjevalnaSkupina().getRecenzenti().add(predlog);
-                zeIzbraniRecenzenti.add(predlog.getId());
+                // Shrani predloge in izberi prvega za vsako mesto
+                for (List<Recenzent> predlogi : predlogiZaVsakoMesto) {
+                    zahteva.getPredlogiRecenzentov().addAll(predlogi); // Shrani predloge
+                    Recenzent izbranRecenzent = predlogi.get(0); // Izberi prvega
+                    skupina.getRecenzenti().add(izbranRecenzent); // Dodaj izbranega v skupino
+                    predlogi.forEach(recenzent -> zeIzbraniRecenzenti.add(recenzent.getId())); // Označi kot izbran
+                }
             }
+
+            ocenjevalnaSkupinaRepository.save(skupina); // Shrani skupino
+        }
+    }
+
+
+    public void pocistiDodelitve() {
+        List<OcenjevalnaSkupina> vseSkupine = ocenjevalnaSkupinaRepository.findAll();
+
+        for (OcenjevalnaSkupina skupina : vseSkupine) {
+            skupina.getRecenzenti().clear(); // Odstrani vse dodeljene recenzente iz skupine
         }
 
-        // Shrani vse skupine in njihove povezave v bazo
-        ocenjevalnaSkupinaRepository.saveAll(
-                zahteveSkupin.stream()
-                        .map(OcenjevalnaSkupinaPoddomena::getOcenjevalnaSkupina)
-                        .distinct()
-                        .toList()
-        );
+        ocenjevalnaSkupinaRepository.saveAll(vseSkupine); // Posodobi skupine v bazi
     }
-
     // Nova metoda za dodajanje ocenjevalnih skupin
     public void dodajSkupine() {
         // OS1: 3 recenzenti LS7
@@ -143,6 +157,62 @@ public class OcenjevalnaSkupinaService {
                 false
         ));
         ocenjevalnaSkupinaRepository.save(os4);
+    }
+
+    public List<OcenjevalnaSkupina> getAllSkupine() {
+        return ocenjevalnaSkupinaRepository.findAll();
+    }
+
+    public File generirajExcelPorocilo() throws Exception {
+        List<OcenjevalnaSkupina> skupine = ocenjevalnaSkupinaRepository.findAll();
+
+        Workbook workbook = new XSSFWorkbook();
+        Sheet sheet = workbook.createSheet("Dodelitev Recenzentov");
+
+        // Ustvari naslovno vrstico
+        Row headerRow = sheet.createRow(0);
+        String[] stolpci = {"Ocenjevalna Skupina", "Zahtevana Poddomena/Domena", "Št. potrebnih recenzentov", "Šifra Recenzenta", "Ime", "Priimek"};
+
+        for (int i = 0; i < stolpci.length; i++) {
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(stolpci[i]);
+            cell.setCellStyle(nastaviHeaderStyle(workbook));
+        }
+
+        int rowNum = 1;
+
+        for (OcenjevalnaSkupina skupina : skupine) {
+            for (OcenjevalnaSkupinaPoddomena zahteva : skupina.getPoddomene()) {
+                for (Recenzent predlaganRecenzent : zahteva.getPredlogiRecenzentov()) {
+                    Row row = sheet.createRow(rowNum++);
+                    row.createCell(0).setCellValue(skupina.getNaziv());
+                    row.createCell(1).setCellValue(zahteva.isJeSpecifikacija() ? zahteva.getErcPoddomena().getNaziv() : zahteva.getErcDomena().getNaziv());
+                    row.createCell(2).setCellValue(zahteva.getSteviloRecenzentov());
+                    row.createCell(3).setCellValue(predlaganRecenzent.getSifraRecenzenta());
+                    row.createCell(4).setCellValue(predlaganRecenzent.getIme());
+                    row.createCell(5).setCellValue(predlaganRecenzent.getPriimek());
+                    row.createCell(6).setCellValue(skupina.getRecenzenti().contains(predlaganRecenzent) ? "Izbran" : "Predlagan");
+                }
+            }
+        }
+
+        // Shranimo datoteko na disk
+        String filePath = "dodelitev_recenzentov.xlsx";
+        FileOutputStream fileOut = new FileOutputStream(filePath);
+        workbook.write(fileOut);
+        fileOut.close();
+        workbook.close();
+
+        return new File(filePath);
+    }
+
+    // Metoda za oblikovanje naslovne vrstice (bold)
+    private CellStyle nastaviHeaderStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        Font font = workbook.createFont();
+        font.setBold(true);
+        style.setFont(font);
+        return style;
     }
 
 }

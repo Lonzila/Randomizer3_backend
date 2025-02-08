@@ -2,7 +2,6 @@ package si.aris.randomizer3_backend.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import si.aris.randomizer3_backend.entity.OcenjevalnaSkupina;
 import si.aris.randomizer3_backend.entity.Recenzent;
 import si.aris.randomizer3_backend.service.RecenzentService;
 
@@ -26,19 +25,5 @@ public class RecenzentController {
     @GetMapping
     public ResponseEntity<List<Recenzent>> getAllRecenzenti() {
         return ResponseEntity.ok(recenzentService.getAllRecenzenti());
-    }
-
-    @GetMapping("/random/{count}")
-    public ResponseEntity<List<Recenzent>> getRandomRecenzenti(@PathVariable int count) {
-        return ResponseEntity.ok(recenzentService.getRandomRecenzenti(count));
-    }
-
-    @PostMapping("/razporedi")
-    public ResponseEntity<List<OcenjevalnaSkupina>> razporediRecenzente(
-            @RequestParam int steviloSkupin,
-            @RequestParam int steviloRecenzentovNaSkupino) {
-
-        List<OcenjevalnaSkupina> skupine = recenzentService.razporediRecenzente(steviloSkupin, steviloRecenzentovNaSkupino);
-        return ResponseEntity.ok(skupine);
     }
 }
