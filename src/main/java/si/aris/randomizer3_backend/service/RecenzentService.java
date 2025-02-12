@@ -27,36 +27,62 @@ public class RecenzentService {
         return recenzentRepository.findAll();
     }
 
-    public List<List<Recenzent>> pridobiPredlogeRecenzentov(String naziv, boolean jePoddomena, int steviloMest, Set<Long> zeIzbraniRecenzenti) {
-        List<Recenzent> kandidati;
+    public List<List<Recenzent>> pridobiPredlogeRecenzentov(List<String> naziviPoddomen, boolean jePoddomena, int steviloMest, Set<Long> zeUporabljeniRecenzenti) {
+        List<Recenzent> kandidati = new ArrayList<>();
 
-        if (jePoddomena) {
-            // Iskanje recenzentov po specifični poddomeni
-            kandidati = recenzentRepository.findByPoddomenaNaziv(naziv);
+        System.out.println("⚡ Iskanje recenzentov za poddomene/domena: " + naziviPoddomen);
+        System.out.println("🧐 Je poddomena? " + jePoddomena);
+
+        // 1️⃣ Če seznam poddomen ni podan, vrnemo napako in preverimo iskanje po domeni
+        if (!jePoddomena) {
+            System.out.println("❌ Napaka: Seznam `naziviPodomen` je prazen! Preverjam, ali gre za domeno...");
+
+            // Iščemo po domeni!
+            List<Recenzent> recenzentiPoDomeni = recenzentRepository.findByDomenaNaziv(naziviPoddomen.get(0)); // Domnevamo, da je ena domena
+            System.out.println("🔎 Iskanje recenzentov za domeno: " + naziviPoddomen.get(0) + " | Najdeno: " + recenzentiPoDomeni.size());
+
+            kandidati.addAll(recenzentiPoDomeni);
         } else {
-            // Iskanje recenzentov po splošni domeni
-            kandidati = recenzentRepository.findByDomenaNaziv(naziv);
+            // 2️⃣ Če imamo poddomene, jih obdelamo
+            for (String naziv : naziviPoddomen) {
+                List<Recenzent> recenzentiPoPoddomeni = recenzentRepository.findByPoddomenaNaziv(naziv);
+                System.out.println("🔍 Najdenih recenzentov za poddomeno " + naziv + ": " + recenzentiPoPoddomeni.size());
+                kandidati.addAll(recenzentiPoPoddomeni);
+            }
         }
 
-        // Odstranimo že izbrane recenzente
-        kandidati.removeIf(recenzent -> zeIzbraniRecenzenti.contains(recenzent.getId()));
+        System.out.println("📊 Skupno število kandidatov pred filtriranjem: " + kandidati.size());
+
+        // 3️⃣ Odstranimo že izbrane recenzente
+        kandidati.removeIf(recenzent -> zeUporabljeniRecenzenti.contains(recenzent.getId()));
+
+        System.out.println("🎯 Število kandidatov po filtriranju uporabljenih: " + kandidati.size());
 
         // Premešamo seznam za naključni izbor
         Collections.shuffle(kandidati, new SecureRandom());
 
-        // Preverimo, ali imamo dovolj kandidatov
-        int steviloZaPredloge = steviloMest * 4;
+        // 4️⃣ Če ni dovolj kandidatov, vrnemo prazen seznam
+        int steviloZaPredloge = steviloMest * 8;
         if (kandidati.size() < steviloZaPredloge) {
-            throw new IllegalArgumentException("Ni dovolj recenzentov za " + naziv + ". Potrebnih: " + steviloZaPredloge + ", na voljo: " + kandidati.size());
+            System.out.println("🚨 Napaka: Ni dovolj recenzentov za " + naziviPoddomen + ". Potrebnih: " + steviloZaPredloge + ", na voljo: " + kandidati.size());
+            return new ArrayList<>(); // Vrnemo prazen seznam, da ne pade v out of bounds
         }
 
-        // Vrnemo 4 predloge za vsako mesto
+        // 5️⃣ Vrnemo 8 predlogov za vsako mesto
         List<List<Recenzent>> predlogiZaVsakoMesto = new ArrayList<>();
         for (int i = 0; i < steviloMest; i++) {
-            predlogiZaVsakoMesto.add(kandidati.subList(i * 4, (i + 1) * 4));
+            List<Recenzent> predlogi = kandidati.subList(i * 8, (i + 1) * 8);
+            for (Recenzent r : predlogi) {
+                zeUporabljeniRecenzenti.add(r.getId());
+            }
+            predlogiZaVsakoMesto.add(predlogi);
         }
 
+        System.out.println("✅ Uspešno vrnjeni predlogi za: " + naziviPoddomen);
         return predlogiZaVsakoMesto;
     }
+
+
+
 
 }

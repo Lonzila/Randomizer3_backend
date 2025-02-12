@@ -37,7 +37,7 @@ public class OcenjevalnaSkupinaController {
     }
     @PostMapping("/razporedi")
     public ResponseEntity<String> nakljucnoRazporediRecenzente() {
-        ocenjevalnaSkupinaService.nakljucnoDodeliRecenzente();
+        ocenjevalnaSkupinaService.generirajPredlogeRecenzentov();
         return ResponseEntity.ok("Recenzenti so bili uspešno naključno dodeljeni ocenjevalnim skupinam.");
     }
 

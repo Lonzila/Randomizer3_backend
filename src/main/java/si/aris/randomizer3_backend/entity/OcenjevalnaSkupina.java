@@ -24,6 +24,12 @@ public class OcenjevalnaSkupina {
     @OneToMany(mappedBy = "ocenjevalnaSkupina", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OcenjevalnaSkupinaPoddomena> poddomene = new ArrayList<>();
 
+    public OcenjevalnaSkupina() {}
+
+    public OcenjevalnaSkupina(String naziv) {
+        this.naziv = naziv;
+    }
+
     // Getters and setters
     public Long getId() {
         return id;

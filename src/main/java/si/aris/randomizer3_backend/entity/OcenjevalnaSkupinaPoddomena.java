@@ -18,14 +18,16 @@ public class OcenjevalnaSkupinaPoddomena {
 
     @ManyToOne
     @JoinColumn(name = "erc_poddomena_id")
-    private ErcPoddomena ercPoddomena; // Specifična poddomena
+    private ErcPoddomena ercPoddomena;
 
     @ManyToOne
     @JoinColumn(name = "erc_domena_id")
-    private ErcDomena ercDomena; // Splošna domena
+    private ErcDomena ercDomena;
 
-    private int steviloRecenzentov; // Število recenzentov za zahtevo
-    private boolean jeSpecifikacija; // Ali gre za specifično poddomeno (true) ali splošno domeno (false)
+    private int steviloRecenzentov;
+    private boolean jeSpecifikacija;
+    @ElementCollection
+    private List<String> alternativePoddomen = new ArrayList<>();
     @ManyToMany
     @JoinTable(
             name = "predlogi_recenzentov",
@@ -33,72 +35,50 @@ public class OcenjevalnaSkupinaPoddomena {
             inverseJoinColumns = @JoinColumn(name = "recenzent_id")
     )
     private List<Recenzent> predlogiRecenzentov = new ArrayList<>();
+
+    public OcenjevalnaSkupinaPoddomena() {}
+
     public OcenjevalnaSkupinaPoddomena(OcenjevalnaSkupina ocenjevalnaSkupina, ErcPoddomena ercPoddomena,
-                                       ErcDomena ercDomena, int steviloRecenzentov, boolean jeSpecifikacija) {
+                                       ErcDomena ercDomena, int steviloRecenzentov, boolean jeSpecifikacija, List<String> alternativePoddomen) {
         this.ocenjevalnaSkupina = ocenjevalnaSkupina;
         this.ercPoddomena = ercPoddomena;
         this.ercDomena = ercDomena;
         this.steviloRecenzentov = steviloRecenzentov;
         this.jeSpecifikacija = jeSpecifikacija;
+        this.alternativePoddomen = alternativePoddomen;
     }
 
-    public OcenjevalnaSkupinaPoddomena() {
-
+    public List<String> getAlternativePoddomen() {
+        return alternativePoddomen;
     }
 
-    // Getters and setters
     public List<Recenzent> getPredlogiRecenzentov() {
         return predlogiRecenzentov;
     }
 
     public void setPredlogiRecenzentov(List<Recenzent> predlogiRecenzentov) {
-        this.predlogiRecenzentov = predlogiRecenzentov;
-    }
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
+        if (predlogiRecenzentov == null) {
+            this.predlogiRecenzentov = new ArrayList<>();
+        } else {
+            this.predlogiRecenzentov = new ArrayList<>(predlogiRecenzentov); // Preprečimo ImmutableList napako
+        }
     }
 
-    public OcenjevalnaSkupina getOcenjevalnaSkupina() {
-        return ocenjevalnaSkupina;
+    public void pocistiPredloge() {
+        this.predlogiRecenzentov.clear();
     }
 
-    public void setOcenjevalnaSkupina(OcenjevalnaSkupina ocenjevalnaSkupina) {
-        this.ocenjevalnaSkupina = ocenjevalnaSkupina;
-    }
-
-    public ErcPoddomena getErcPoddomena() {
-        return ercPoddomena;
-    }
-
-    public void setErcPoddomena(ErcPoddomena ercPoddomena) {
-        this.ercPoddomena = ercPoddomena;
-    }
-
-    public ErcDomena getErcDomena() {
-        return ercDomena;
-    }
-
-    public void setErcDomena(ErcDomena ercDomena) {
-        this.ercDomena = ercDomena;
-    }
-
-    public int getSteviloRecenzentov() {
-        return steviloRecenzentov;
-    }
-
-    public void setSteviloRecenzentov(int steviloRecenzentov) {
-        this.steviloRecenzentov = steviloRecenzentov;
-    }
-
-    public boolean isJeSpecifikacija() {
-        return jeSpecifikacija;
-    }
-
-    public void setJeSpecifikacija(boolean jeSpecifikacija) {
-        this.jeSpecifikacija = jeSpecifikacija;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public OcenjevalnaSkupina getOcenjevalnaSkupina() { return ocenjevalnaSkupina; }
+    public void setOcenjevalnaSkupina(OcenjevalnaSkupina ocenjevalnaSkupina) { this.ocenjevalnaSkupina = ocenjevalnaSkupina; }
+    public ErcPoddomena getErcPoddomena() { return ercPoddomena; }
+    public void setErcPoddomena(ErcPoddomena ercPoddomena) { this.ercPoddomena = ercPoddomena; }
+    public ErcDomena getErcDomena() { return ercDomena; }
+    public void setErcDomena(ErcDomena ercDomena) { this.ercDomena = ercDomena; }
+    public int getSteviloRecenzentov() { return steviloRecenzentov; }
+    public void setSteviloRecenzentov(int steviloRecenzentov) { this.steviloRecenzentov = steviloRecenzentov; }
+    public boolean isJeSpecifikacija() { return jeSpecifikacija; }
+    public void setJeSpecifikacija(boolean jeSpecifikacija) { this.jeSpecifikacija = jeSpecifikacija; }
 }
+
